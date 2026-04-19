@@ -108,7 +108,7 @@
                                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
 
-                            <div x-show="open" style="display: none;" @click.away="open = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200/50 dark:border-slate-700 py-1 z-50">
+                            <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200/50 dark:border-slate-700 py-1 z-50">
                                 <div class="px-4 py-2 border-b border-gray-100 dark:border-slate-700">
                                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ auth()->user()->email }}</p>
                                     <p class="text-xs text-indigo-500 font-medium mt-0.5">{{ auth()->user()->roles->first()?->name ?? 'No Role' }}</p>
