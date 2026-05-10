@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // User Management (Admin only)
     Route::get('users', UserManagement::class)->name('users.index')->middleware('role:admin');
+    Route::get('repositories', \App\Livewire\RepositoryManagement::class)->name('repositories.index')->middleware('role:admin');
 });
 
 Route::view('profile', 'profile')

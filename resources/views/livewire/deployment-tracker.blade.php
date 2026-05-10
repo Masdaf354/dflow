@@ -8,10 +8,9 @@
                 <thead>
                     <tr class="bg-gray-50 dark:bg-slate-900/50">
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Change Request</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">DEV</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">UAT</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">STAGING</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">PRODUCTION</th>
+                        @foreach(\App\Models\ChangeDeployment::ENVIRONMENTS as $key => $label)
+                            <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $label }}</th>
+                        @endforeach
                         <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                     </tr>
                 </thead>
@@ -19,7 +18,6 @@
                     @forelse($changeRequests as $cr)
                         @php
                             $deployments = $cr->deployments->keyBy('environment');
-                            $environments = ['dev', 'uat', 'staging', 'production'];
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors duration-150">
                             <td class="px-6 py-4">
@@ -29,11 +27,11 @@
                                 </a>
                             </td>
 
-                            @foreach($environments as $env)
+                            @foreach(\App\Models\ChangeDeployment::ENVIRONMENTS as $envKey => $envLabel)
                                 <td class="px-6 py-4 text-center">
-                                    @if(isset($deployments[$env]))
+                                    @if(isset($deployments[$envKey]))
                                         @php
-                                            $dep = $deployments[$env];
+                                            $dep = $deployments[$envKey];
                                             $envStatusColors = [
                                                 'deployed' => 'text-emerald-500',
                                                 'deploying' => 'text-yellow-500 animate-pulse',
@@ -78,7 +76,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="{{ count(\App\Models\ChangeDeployment::ENVIRONMENTS) + 2 }}" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center">
                                     <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                                     <p class="text-gray-500 dark:text-gray-400 text-sm">No deployments yet.</p>
@@ -113,4 +111,5 @@
             </div>
         </div>
     </div>
+
 </div>

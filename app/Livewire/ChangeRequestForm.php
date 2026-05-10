@@ -4,10 +4,16 @@ namespace App\Livewire;
 
 use App\Models\ChangeLog;
 use App\Models\ChangeRequest;
+use App\Models\ChangeRequestAttachment;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+
+use Livewire\WithFileUploads;
 
 class ChangeRequestForm extends Component
 {
+    use WithFileUploads;
+
     public ?ChangeRequest $changeRequest = null;
     public bool $isEdit = false;
 
@@ -23,6 +29,11 @@ class ChangeRequestForm extends Component
     public string $affected_module = '';
     public ?string $target_release_date = null;
 
+    public $images = []; // This will now accumulate images
+    public $newImages = []; // This will be used for the wire:model binding
+    public $existingImages = [];
+    public ?int $confirmingImageDeletion = null;
+
     protected $rules = [
         'title' => 'required|string|max:255',
         'description' => 'required|string',
@@ -35,7 +46,31 @@ class ChangeRequestForm extends Component
         'testing_plan' => 'nullable|string',
         'affected_module' => 'nullable|string|max:255',
         'target_release_date' => 'nullable|date',
+        'newImages.*' => 'nullable|image|max:5120', // Max 5MB
     ];
+
+    public function updatedNewImages()
+    {
+        $this->validate([
+            'newImages.*' => 'image|max:5120',
+        ]);
+
+        if (is_array($this->newImages)) {
+            foreach ($this->newImages as $image) {
+                $this->images[] = $image;
+            }
+        } else {
+            $this->images[] = $this->newImages;
+        }
+
+        $this->newImages = [];
+    }
+
+    public function removeNewImage($index)
+    {
+        unset($this->images[$index]);
+        $this->images = array_values($this->images);
+    }
 
     public function mount(?ChangeRequest $changeRequest = null)
     {
@@ -53,6 +88,7 @@ class ChangeRequestForm extends Component
             $this->testing_plan = $changeRequest->testing_plan ?? '';
             $this->affected_module = $changeRequest->affected_module ?? '';
             $this->target_release_date = $changeRequest->target_release_date?->format('Y-m-d');
+            $this->existingImages = $changeRequest->attachments;
         }
     }
 
@@ -84,6 +120,8 @@ class ChangeRequestForm extends Component
                 'created_by' => auth()->id(),
             ]);
 
+            $this->saveImages($this->changeRequest);
+
             session()->flash('success', 'Change request updated successfully.');
         } else {
             $data['code'] = ChangeRequest::generateCode();
@@ -99,10 +137,41 @@ class ChangeRequestForm extends Component
                 'created_by' => auth()->id(),
             ]);
 
+            $this->saveImages($cr);
+
             session()->flash('success', 'Change request created successfully.');
         }
 
         return redirect()->route('change-requests.index');
+    }
+
+    protected function saveImages(ChangeRequest $cr)
+    {
+        foreach ($this->images as $image) {
+            $path = $image->store('change-requests/' . $cr->id, 'public');
+            $cr->attachments()->create([
+                'file_path' => $path,
+                'file_name' => $image->getClientOriginalName(),
+                'file_type' => $image->getMimeType(),
+            ]);
+        }
+        $this->images = [];
+    }
+
+    public function confirmImageDeletion($id)
+    {
+        $this->confirmingImageDeletion = $id;
+        $this->dispatch('open-modal', 'confirm-image-deletion');
+    }
+
+    public function deleteImage()
+    {
+        $attachment = ChangeRequestAttachment::findOrFail($this->confirmingImageDeletion);
+        Storage::disk('public')->delete($attachment->file_path);
+        $attachment->delete();
+        $this->confirmingImageDeletion = null;
+        $this->dispatch('close-modal', 'confirm-image-deletion');
+        $this->existingImages = $this->changeRequest->attachments()->get();
     }
 
     public function render()

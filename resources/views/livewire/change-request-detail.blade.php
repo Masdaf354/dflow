@@ -78,7 +78,7 @@
                         @elseif($nextStatus === 'rejected')
                             {{-- Handled in sidebar --}}
                         @elseif($nextStatus === 'cancelled')
-                            <button wire:click="transitionTo('cancelled')" wire:confirm="Are you sure you want to cancel this change request?" class="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm font-medium rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-all duration-200">
+                            <button wire:click="confirmCancellation" class="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm font-medium rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-all duration-200">
                                 Cancel Request
                             </button>
                         @else
@@ -156,6 +156,172 @@
                         <p class="mt-1 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ $changeRequest->testing_plan }}</p>
                     </div>
                     @endif
+                </div>
+            </div>
+            <!-- Attachments -->
+            @if($changeRequest->attachments->isNotEmpty())
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Attachments</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        @foreach($changeRequest->attachments as $attachment)
+                            <a href="{{ $attachment->url }}" target="_blank" class="relative group aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 hover:ring-2 hover:ring-indigo-500 transition-all duration-200">
+                                <img src="{{ $attachment->url }}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" alt="{{ $attachment->file_name }}">
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                    <span class="text-[10px] text-white truncate w-full">{{ $attachment->file_name }}</span>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <!-- Comments Section -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 dark:border-slate-700 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                        Discussion
+                        <span class="text-sm font-normal text-gray-400">({{ $changeRequest->comments->count() + $changeRequest->comments->sum(fn($c) => $c->replies->count()) }})</span>
+                    </h3>
+                </div>
+
+                <!-- Add Comment -->
+                <form wire:submit="addComment" class="mb-6">
+                    <div class="flex gap-3">
+                        <div class="flex-shrink-0">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                                {{ substr(auth()->user()->name, 0, 1) }}
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <textarea
+                                wire:model="commentBody"
+                                rows="3"
+                                class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 resize-none"
+                                placeholder="Add a comment..."
+                            ></textarea>
+                            @error('commentBody') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                            <div class="flex justify-end mt-2">
+                                <button type="submit" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-200 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                    Post Comment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Comments List -->
+                <div class="space-y-5">
+                    @forelse($changeRequest->comments as $comment)
+                        <div class="group" wire:key="comment-{{ $comment->id }}">
+                            <div class="flex gap-3">
+                                <div class="flex-shrink-0">
+                                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                                        {{ substr($comment->user->name ?? 'U', 0, 1) }}
+                                    </div>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ $comment->user->name }}</span>
+                                        <span class="text-xs text-gray-400">{{ $comment->created_at->diffForHumans() }}</span>
+                                        @if($comment->created_at != $comment->updated_at)
+                                            <span class="text-[10px] text-gray-400 italic">(edited)</span>
+                                        @endif
+                                    </div>
+
+                                    @if($editingCommentId === $comment->id)
+                                        {{-- Edit Mode --}}
+                                        <div class="space-y-2">
+                                            <textarea wire:model="editCommentBody" rows="3" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 resize-none"></textarea>
+                                            @error('editCommentBody') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+                                            <div class="flex gap-2">
+                                                <button wire:click="updateComment" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors">Save</button>
+                                                <button wire:click="cancelEdit" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Cancel</button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{-- Display Mode --}}
+                                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">{{ $comment->body }}</p>
+
+                                        <div class="flex items-center gap-3 mt-2">
+                                            <button wire:click="setReplyingTo({{ $comment->id }})" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium transition-colors flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                                Reply
+                                            </button>
+                                            @if($comment->user_id === auth()->id())
+                                                <button wire:click="startEditComment({{ $comment->id }})" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium transition-colors opacity-0 group-hover:opacity-100">Edit</button>
+                                                <button wire:click="deleteComment({{ $comment->id }})" wire:confirm="Delete this comment?" class="text-xs text-red-400 hover:text-red-600 font-medium transition-colors opacity-0 group-hover:opacity-100">Delete</button>
+                                            @endif
+                                        </div>
+                                    @endif
+
+                                    {{-- Reply Form --}}
+                                    @if($replyingTo === $comment->id)
+                                        <div class="mt-3 pl-3 border-l-2 border-indigo-200 dark:border-indigo-800">
+                                            <form wire:submit="addReply" class="flex gap-2">
+                                                <div class="flex-1">
+                                                    <textarea wire:model="replyBody" rows="2" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 resize-none" placeholder="Write a reply..."></textarea>
+                                                    @error('replyBody') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
+                                                    <div class="flex gap-2 mt-1.5">
+                                                        <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors">Reply</button>
+                                                        <button type="button" wire:click="setReplyingTo({{ $comment->id }})" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    @endif
+
+                                    {{-- Replies --}}
+                                    @if($comment->replies->isNotEmpty())
+                                        <div class="mt-3 pl-3 border-l-2 border-gray-100 dark:border-slate-700 space-y-3">
+                                            @foreach($comment->replies as $reply)
+                                                <div class="group/reply flex gap-2.5" wire:key="reply-{{ $reply->id }}">
+                                                    <div class="flex-shrink-0">
+                                                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-[10px] font-bold">
+                                                            {{ substr($reply->user->name ?? 'U', 0, 1) }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center gap-2 mb-0.5">
+                                                            <span class="text-xs font-semibold text-gray-800 dark:text-white">{{ $reply->user->name }}</span>
+                                                            <span class="text-[10px] text-gray-400">{{ $reply->created_at->diffForHumans() }}</span>
+                                                            @if($reply->created_at != $reply->updated_at)
+                                                                <span class="text-[10px] text-gray-400 italic">(edited)</span>
+                                                            @endif
+                                                        </div>
+
+                                                        @if($editingCommentId === $reply->id)
+                                                            <div class="space-y-2">
+                                                                <textarea wire:model="editCommentBody" rows="2" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 resize-none"></textarea>
+                                                                <div class="flex gap-2">
+                                                                    <button wire:click="updateComment" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-medium rounded-lg transition-colors">Save</button>
+                                                                    <button wire:click="cancelEdit" class="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 text-[10px] font-medium rounded-lg transition-colors">Cancel</button>
+                                                                </div>
+                                                            </div>
+                                                        @else
+                                                            <p class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">{{ $reply->body }}</p>
+                                                            @if($reply->user_id === auth()->id())
+                                                                <div class="flex items-center gap-2 mt-1 opacity-0 group-hover/reply:opacity-100 transition-opacity">
+                                                                    <button wire:click="startEditComment({{ $reply->id }})" class="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium transition-colors">Edit</button>
+                                                                    <button wire:click="deleteComment({{ $reply->id }})" wire:confirm="Delete this reply?" class="text-[10px] text-red-400 hover:text-red-600 font-medium transition-colors">Delete</button>
+                                                                </div>
+                                                            @endif
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-center py-8">
+                            <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">No comments yet. Start the discussion!</p>
+                        </div>
+                    @endforelse
                 </div>
             </div>
 
@@ -268,7 +434,14 @@
                             @endforeach
                         </select>
                         <input wire:model="gitBranch" type="text" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-mono text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500" placeholder="Git branch" />
-                        <input wire:model="repository" type="text" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500" placeholder="Repository" />
+                        <select wire:model="repository" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500">
+                            @if($repositories->isEmpty())
+                                <option value="main-app">Main App (Default)</option>
+                            @endif
+                            @foreach($repositories as $repo)
+                                <option value="{{ $repo->name }}">{{ $repo->name }}</option>
+                            @endforeach
+                        </select>
                         <button wire:click="assignDeveloper" class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all duration-200">
                             Assign
                         </button>
@@ -336,4 +509,13 @@
             @endif
         </div>
     </div>
+    <!-- Confirmation Modal -->
+    <x-confirmation-modal 
+        name="confirm-cancellation" 
+        :show="$confirmingCancellation"
+        title="Cancel Change Request"
+        content="Are you sure you want to cancel this change request? This will move it back to draft or stop the current workflow."
+        confirmText="Cancel Request"
+        wire:click="cancelRequest"
+    />
 </div>

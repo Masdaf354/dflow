@@ -17,6 +17,7 @@ class ChangeRequestList extends Component
     public string $priorityFilter = '';
     public string $sortField = 'created_at';
     public string $sortDirection = 'desc';
+    public ?int $confirmingDeletion = null;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -45,9 +46,15 @@ class ChangeRequestList extends Component
         }
     }
 
-    public function deleteChangeRequest($id)
+    public function confirmDeletion($id)
     {
-        $cr = ChangeRequest::findOrFail($id);
+        $this->confirmingDeletion = $id;
+        $this->dispatch('open-modal', 'confirm-cr-deletion');
+    }
+
+    public function deleteChangeRequest()
+    {
+        $cr = ChangeRequest::findOrFail($this->confirmingDeletion);
 
         if ($cr->status !== 'draft') {
             session()->flash('error', 'Only draft change requests can be deleted.');
@@ -55,6 +62,8 @@ class ChangeRequestList extends Component
         }
 
         $cr->delete();
+        $this->confirmingDeletion = null;
+        $this->dispatch('close-modal', 'confirm-cr-deletion');
         session()->flash('success', 'Change request deleted successfully.');
     }
 
@@ -62,6 +71,7 @@ class ChangeRequestList extends Component
     {
         $changeRequests = ChangeRequest::query()
             ->with('creator')
+            ->withCount('attachments')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('code', 'like', '%' . $this->search . '%')

@@ -20,10 +20,9 @@ class ChangeDeployment extends Model
     ];
 
     public const ENVIRONMENTS = [
-        'dev' => 'Development',
+        'staging' => 'SIT',
         'uat' => 'UAT',
-        'staging' => 'Staging',
-        'production' => 'Production',
+        'production' => 'PRODUCTION',
     ];
 
     public const STATUSES = [

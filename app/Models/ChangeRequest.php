@@ -129,6 +129,16 @@ class ChangeRequest extends Model
         return $this->hasMany(ChangeLog::class)->orderBy('created_at', 'desc');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(ChangeRequestAttachment::class);
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(ChangeRequestComment::class)->whereNull('parent_id')->orderBy('created_at', 'desc');
+    }
+
     public function getStatusColorAttribute(): string
     {
         return self::STATUS_COLORS[$this->status] ?? 'gray';

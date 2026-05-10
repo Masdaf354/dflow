@@ -69,6 +69,10 @@
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         <span x-show="sidebarOpen" x-transition>User Management</span>
                     </a>
+                    <a href="{{ route('repositories.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 {{ request()->routeIs('repositories.*') ? 'bg-indigo-500/20 text-indigo-400 shadow-lg shadow-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span x-show="sidebarOpen" x-transition>Repo Management</span>
+                    </a>
                     @endrole
                 </nav>
 
@@ -125,18 +129,41 @@
 
                 <!-- Page Content -->
                 <main class="flex-1 overflow-y-auto p-6">
-                    <!-- Flash Messages -->
-                    @if (session()->has('success'))
-                        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-transition class="mb-4 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
                     {{ $slot }}
                 </main>
             </div>
         </div>
+
+        <x-toast />
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                @if (session()->has('success'))
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', text: '{{ session('success') }}' } }));
+                @endif
+
+                @if (session()->has('error'))
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', text: '{{ session('error') }}' } }));
+                @endif
+
+                @if (session()->has('warning'))
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', text: '{{ session('warning') }}' } }));
+                @endif
+
+                @if (session()->has('info'))
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'info', text: '{{ session('info') }}' } }));
+                @endif
+            });
+
+            window.addEventListener('swal-toast', event => {
+                window.dispatchEvent(new CustomEvent('toast', { 
+                    detail: { 
+                        type: event.detail[0].type || 'success', 
+                        text: event.detail[0].text 
+                    } 
+                }));
+            });
+        </script>
 
         @livewireScripts
     </body>

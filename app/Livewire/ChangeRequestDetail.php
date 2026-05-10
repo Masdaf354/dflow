@@ -7,6 +7,8 @@ use App\Models\ChangeDeployment;
 use App\Models\ChangeDevelopment;
 use App\Models\ChangeLog;
 use App\Models\ChangeRequest;
+use App\Models\ChangeRequestComment;
+use App\Models\Repository;
 use App\Models\User;
 use Livewire\Component;
 
@@ -17,14 +19,28 @@ class ChangeRequestDetail extends Component
     public string $gitBranch = '';
     public string $repository = '';
     public int $developerId = 0;
-    public string $deployEnvironment = 'dev';
+    public string $deployEnvironment = 'staging';
     public string $deployNotes = '';
+    public bool $confirmingCancellation = false;
+
+    // Comment properties
+    public string $commentBody = '';
+    public ?int $replyingTo = null;
+    public string $replyBody = '';
+    public ?int $editingCommentId = null;
+    public string $editCommentBody = '';
 
     public function mount(ChangeRequest $changeRequest)
     {
         $this->changeRequest = $changeRequest;
         $this->gitBranch = $changeRequest->getGitBranchName();
-        $this->repository = $changeRequest->developments()->first()?->repository ?? 'main-app';
+        
+        $dev = $changeRequest->developments()->first();
+        if ($dev) {
+            $this->repository = $dev->repository;
+        } else {
+            $this->repository = Repository::where('is_active', true)->first()?->name ?? 'main-app';
+        }
     }
 
     public function submitForApproval()
@@ -146,6 +162,19 @@ class ChangeRequestDetail extends Component
         session()->flash('success', 'Status updated to ' . ChangeRequest::STATUSES[$status] . '.');
     }
 
+    public function confirmCancellation()
+    {
+        $this->confirmingCancellation = true;
+        $this->dispatch('open-modal', 'confirm-cancellation');
+    }
+
+    public function cancelRequest()
+    {
+        $this->transitionTo('cancelled');
+        $this->confirmingCancellation = false;
+        $this->dispatch('close-modal', 'confirm-cancellation');
+    }
+
     public function deploy()
     {
         ChangeDeployment::create([
@@ -170,12 +199,88 @@ class ChangeRequestDetail extends Component
 
     public function render()
     {
-        $this->changeRequest->load(['creator', 'approvals.approver', 'developments.developer', 'deployments.deployedBy', 'logs.creator']);
+        $this->changeRequest->load(['creator', 'approvals.approver', 'developments.developer', 'deployments.deployedBy', 'logs.creator', 'attachments', 'comments.user', 'comments.replies.user']);
 
         $developers = User::role('developer')->get();
+        $repositories = Repository::where('is_active', true)->orderBy('name')->get();
 
         return view('livewire.change-request-detail', [
             'developers' => $developers,
+            'repositories' => $repositories,
         ]);
+    }
+
+    // ── Comment Methods ────────────────────────────────
+
+    public function addComment()
+    {
+        $this->validate(['commentBody' => 'required|string|max:2000']);
+
+        ChangeRequestComment::create([
+            'change_request_id' => $this->changeRequest->id,
+            'user_id' => auth()->id(),
+            'body' => $this->commentBody,
+        ]);
+
+        $this->commentBody = '';
+        $this->dispatch('toast', type: 'success', text: 'Comment added.');
+    }
+
+    public function setReplyingTo($commentId)
+    {
+        $this->replyingTo = $this->replyingTo === $commentId ? null : $commentId;
+        $this->replyBody = '';
+    }
+
+    public function addReply()
+    {
+        $this->validate(['replyBody' => 'required|string|max:2000']);
+
+        ChangeRequestComment::create([
+            'change_request_id' => $this->changeRequest->id,
+            'user_id' => auth()->id(),
+            'parent_id' => $this->replyingTo,
+            'body' => $this->replyBody,
+        ]);
+
+        $this->replyingTo = null;
+        $this->replyBody = '';
+        $this->dispatch('toast', type: 'success', text: 'Reply added.');
+    }
+
+    public function startEditComment($commentId)
+    {
+        $comment = ChangeRequestComment::findOrFail($commentId);
+        if ($comment->user_id !== auth()->id()) return;
+        $this->editingCommentId = $commentId;
+        $this->editCommentBody = $comment->body;
+    }
+
+    public function updateComment()
+    {
+        $this->validate(['editCommentBody' => 'required|string|max:2000']);
+
+        $comment = ChangeRequestComment::findOrFail($this->editingCommentId);
+        if ($comment->user_id !== auth()->id()) return;
+
+        $comment->update(['body' => $this->editCommentBody]);
+        $this->editingCommentId = null;
+        $this->editCommentBody = '';
+        $this->dispatch('toast', type: 'success', text: 'Comment updated.');
+    }
+
+    public function cancelEdit()
+    {
+        $this->editingCommentId = null;
+        $this->editCommentBody = '';
+    }
+
+    public function deleteComment($commentId)
+    {
+        $comment = ChangeRequestComment::findOrFail($commentId);
+        if ($comment->user_id !== auth()->id()) return;
+
+        $comment->delete();
+        $this->dispatch('toast', type: 'success', text: 'Comment deleted.');
     }
 }

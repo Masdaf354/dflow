@@ -37,7 +37,7 @@
                         <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-1 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-1 z-10">
                             <button wire:click="openEditModal({{ $user->id }})" @click="open = false" class="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">Edit</button>
                             @if($user->id !== auth()->id())
-                                <button wire:click="deleteUser({{ $user->id }})" wire:confirm="Are you sure?" @click="open = false" class="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-slate-700">Delete</button>
+                                <button wire:click="confirmUserDeletion({{ $user->id }})" @click="open = false" class="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-slate-700">Delete</button>
                             @endif
                         </div>
                     </div>
@@ -124,4 +124,14 @@
             </div>
         </div>
     @endif
+
+    <!-- Confirmation Modal -->
+    <x-confirmation-modal 
+        name="confirm-user-deletion" 
+        :show="$confirmingUserDeletion !== null"
+        title="Delete User"
+        content="Are you sure you want to delete this user? This action cannot be undone."
+        confirmText="Delete User"
+        wire:click="deleteUser"
+    />
 </div>

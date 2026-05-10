@@ -15,6 +15,7 @@ class UserManagement extends Component
     public bool $showModal = false;
     public bool $isEdit = false;
     public ?int $editUserId = null;
+    public ?int $confirmingUserDeletion = null;
 
     public string $name = '';
     public string $email = '';
@@ -92,9 +93,15 @@ class UserManagement extends Component
         $this->showModal = false;
     }
 
-    public function deleteUser($userId)
+    public function confirmUserDeletion($id)
     {
-        $user = User::findOrFail($userId);
+        $this->confirmingUserDeletion = $id;
+        $this->dispatch('open-modal', 'confirm-user-deletion');
+    }
+
+    public function deleteUser()
+    {
+        $user = User::findOrFail($this->confirmingUserDeletion);
 
         if ($user->id === auth()->id()) {
             session()->flash('error', 'You cannot delete your own account.');
@@ -102,6 +109,8 @@ class UserManagement extends Component
         }
 
         $user->delete();
+        $this->confirmingUserDeletion = null;
+        $this->dispatch('close-modal', 'confirm-user-deletion');
         session()->flash('success', 'User deleted successfully.');
     }
 

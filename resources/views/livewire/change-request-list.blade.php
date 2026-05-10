@@ -93,7 +93,15 @@
                                 <span class="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400">{{ $cr->code }}</span>
                             </td>
                             <td class="px-6 py-4">
-                                <a href="{{ route('change-requests.show', $cr) }}" class="text-sm font-medium text-gray-800 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{{ Str::limit($cr->title, 40) }}</a>
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('change-requests.show', $cr) }}" class="text-sm font-medium text-gray-800 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{{ Str::limit($cr->title, 40) }}</a>
+                                    @if($cr->attachments_count > 0)
+                                        <div class="flex items-center gap-0.5 text-gray-400" title="{{ $cr->attachments_count }} attachments">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                            <span class="text-[10px] font-medium">{{ $cr->attachments_count }}</span>
+                                        </div>
+                                    @endif
+                                </div>
                                 @if($cr->affected_module)
                                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $cr->affected_module }}</p>
                                 @endif
@@ -168,11 +176,11 @@
                                         <a href="{{ route('change-requests.edit', $cr) }}" class="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all duration-200" title="Edit">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         </a>
-                                        <button wire:click="deleteChangeRequest({{ $cr->id }})" wire:confirm="Are you sure you want to delete this change request?" class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200" title="Delete">
+                                        <button wire:click="confirmDeletion({{ $cr->id }})" class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200" title="Delete">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
-                                    @endif
-                                </div>
+                                     @endif
+                                 </div>
                             </td>
                         </tr>
                     @empty
@@ -197,4 +205,14 @@
             </div>
         @endif
     </div>
+
+    <!-- Confirmation Modal -->
+    <x-confirmation-modal 
+        name="confirm-cr-deletion" 
+        :show="$confirmingDeletion !== null"
+        title="Delete Change Request"
+        content="Are you sure you want to delete this change request? This action cannot be undone."
+        confirmText="Delete Request"
+        wire:click="deleteChangeRequest"
+    />
 </div>
