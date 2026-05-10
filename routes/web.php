@@ -28,6 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Deployments
     Route::get('deployments', DeploymentTracker::class)->name('deployments');
 
+    // Git Documentation
+    Route::get('git-docs', \App\Livewire\GitDocumentation::class)->name('git-docs');
+
     // User Management (Admin only)
     Route::get('users', UserManagement::class)->name('users.index')->middleware('role:admin');
     Route::get('repositories', \App\Livewire\RepositoryManagement::class)->name('repositories.index')->middleware('role:admin');

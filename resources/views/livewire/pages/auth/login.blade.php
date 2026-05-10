@@ -77,11 +77,5 @@ new #[Layout('layouts.guest')] class extends Component {
             </svg>
             Sign in
         </button>
-
-        <p class="mt-6 text-center text-sm text-slate-400">
-            Don't have an account?
-            <a href="{{ route('register') }}" wire:navigate
-                class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors duration-200">Create one</a>
-        </p>
     </form>
 </div>
