@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -13,6 +14,9 @@ Route::middleware('guest')->group(function () {
 
     Volt::route('reset-password/{token}', 'pages.auth.reset-password')
         ->name('password.reset');
+
+    // Google OAuth - redirect for login
+    Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
 });
 
 Route::middleware('auth')->group(function () {
@@ -25,6 +29,10 @@ Route::middleware('auth')->group(function () {
 
     Volt::route('confirm-password', 'pages.auth.confirm-password')
         ->name('password.confirm');
+
+    // Google Account Connect/Disconnect (Profile)
+    Route::get('auth/google/connect', [GoogleController::class, 'connectRedirect'])->name('google.connect');
+    Route::post('auth/google/disconnect', [GoogleController::class, 'disconnect'])->name('google.disconnect');
 });
 
 Route::post('logout', function () {
@@ -33,3 +41,6 @@ Route::post('logout', function () {
     request()->session()->regenerateToken();
     return redirect('/');
 })->middleware('auth')->name('logout');
+
+// Google OAuth callback (shared - works for both login and connect)
+Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
